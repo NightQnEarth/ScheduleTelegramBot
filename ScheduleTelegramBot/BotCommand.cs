@@ -1,6 +1,4 @@
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Reflection;
 
 namespace ScheduleTelegramBot
 {
@@ -14,17 +12,18 @@ namespace ScheduleTelegramBot
         public BotCommand(BotCommandType commandType)
         {
             CommandType = commandType;
-            var attributes = commandType.GetType().GetField(commandType.ToString()).GetCustomAttributes();
-            (ChatRepresentation, Description) = (attributes.OfType<ChatRepresentation>().First().Representation,
-                                                 attributes.OfType<CommandDescription>().First().Description);
+            (ChatRepresentation, Description) = (commandType.GetAttribute<ChatRepresentation>().Representation,
+                                                 commandType.GetAttribute<CommandDescription>().Description);
         }
 
         public override bool Equals(object obj) => obj is BotCommand botCommand && botCommand.Equals(this);
 
-        // TODO
+        // TODO: access modifier.
         // ReSharper disable once MemberCanBePrivate.Global
         public bool Equals(BotCommand other) => CommandType == other.CommandType;
 
         public override int GetHashCode() => (int)CommandType;
+
+        public override string ToString() => ChatRepresentation;
     }
 }

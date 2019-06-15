@@ -9,4 +9,8 @@
       <PackageReference Include="Telegram.Bot" Version="14.11.0" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="TelegramBotToken" />
+    </ItemGroup>
+
 </Project>
