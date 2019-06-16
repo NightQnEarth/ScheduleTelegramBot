@@ -8,6 +8,7 @@ namespace ScheduleTelegramBot
         public const string OnAdministrationRequest = "Send api-access-token for bot to confirm that you are admin.";
         public const string OnIncorrectEditToken = "Unknown edit-access-token, try again.";
         public const string OnCorrectEditTokenToEdit = "Accept, pick the day that you wanna change:";
+        public const string OnCorrectEditTokenToClearDay = "Accept, pick the day that you wanna clear:";
         public const string OnCorrectApiTokenToGetEditToken = "Accept, your new edit-access-token:\n{0}";
         public const string OnCorrectApiTokenToRemoveEditToken = "Ok, pick token that you wanna recall.";
         public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens = "Accept, but bot hasn't edit-access-tokens.";
@@ -19,6 +20,7 @@ namespace ScheduleTelegramBot
         public const string OnCustomDayCommand = "Ok, pick day that you wanna see:";
         public const string OnRecallLastEditToken = "Success, the last edit-access-token '{0}' was recall.";
         public const string OnRecallNotLastEditToken = "Success, edit-access-token '{0}' was recall.";
+        public const string OnInlinePickDayToClear = "{0} was clear.";
 
         public static readonly string OnInlinePickDayToEdit = string.Join(
             '\n',

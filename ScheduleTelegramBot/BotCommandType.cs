@@ -18,6 +18,10 @@ namespace ScheduleTelegramBot
         [CommandDescription("Edit schedule.")]
         EditSchedule,
 
+        [ChatRepresentation("/clear_day_schedule")]
+        [CommandDescription("Delete schedule of custom day.")]
+        ClearDaySchedule,
+
         [ChatRepresentation("/get_access")]
         [CommandDescription("Get edit-access-token to edit schedule.")]
         GetAccess,

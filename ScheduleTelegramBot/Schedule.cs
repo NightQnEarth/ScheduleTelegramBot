@@ -33,5 +33,7 @@ namespace ScheduleTelegramBot
             daysSchedule.Values.Any(schedule => !string.IsNullOrEmpty(schedule))
                 ? string.Join('\n', daysSchedule.Keys.Select(day => $"{GetDaySchedule(day)}\n"))
                 : BotReplica.OnEmptyFullSchedule;
+
+        public void ClearDaySchedule(WorkDay day) => daysSchedule[day] = null;
     }
 }
