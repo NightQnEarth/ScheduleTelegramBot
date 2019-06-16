@@ -10,10 +10,10 @@ namespace ScheduleTelegramBot
         public const string OnCorrectEditTokenToEdit = "Accept, pick the day that you wanna change:";
         public const string OnCorrectApiTokenToGetEditToken = "Accept, your new edit-access-token:\n{0}";
         public const string OnCorrectApiTokenToRemoveEditToken = "Ok, pick token that you wanna recall.";
-        public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens = "Bot hasn't any edit-access-tokens.";
+        public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens = "Accept, but bot hasn't edit-access-tokens.";
         public const string OnSuccessfullyDayScheduleEdit = "{0} schedule successfull edited.";
         public const string OnUnsuccessfullyDayScheduleEdit = "Incorrect schedule format, try again.";
-        public const string OnEmptyDaySchedule = "Free lessons day.";
+        public const string OnEmptyDaySchedule = "free lessons day.";
         public const string OnEmptyFullSchedule = "Schedule didn't set yet.";
         public const string OnTodayRequestInSunday = "Day off, no lessons.";
         public const string OnCustomDayCommand = "Ok, pick day that you wanna see:";

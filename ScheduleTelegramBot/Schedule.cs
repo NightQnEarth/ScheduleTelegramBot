@@ -26,7 +26,7 @@ namespace ScheduleTelegramBot
 
         public string GetDaySchedule(WorkDay day) =>
             daysSchedule[day] is null
-                ? $"-----{day.GetAttribute<ChatRepresentation>().Representation}:{BotReplica.OnEmptyDaySchedule}"
+                ? $"-----{day.GetAttribute<ChatRepresentation>().Representation}: {BotReplica.OnEmptyDaySchedule}"
                 : $"-----{day.GetAttribute<ChatRepresentation>().Representation}:\n{daysSchedule[day]}";
 
         public string GetFullSchedule() =>

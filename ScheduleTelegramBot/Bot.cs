@@ -136,12 +136,16 @@ namespace ScheduleTelegramBot
                         break;
                     case BotCommandType.RecallAccess when accessTokensCache.IsApiAccessToken(message.Text):
                         if (accessTokensCache.Count == 0)
+                        {
                             await botClient.SendTextMessageAsync(
                                 chatId, BotReplica.OnCorrectApiTokenToRemoveEditTokenIfNoTokens);
+                            chatIdPreviousCommand.Remove(chatId);
+                        }
                         else
                             chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
                                 chatId, BotReplica.OnCorrectApiTokenToRemoveEditToken,
                                 replyMarkup: accessTokensCache.GetInlineAccessTokensKeyboard())).MessageId;
+
                         break;
                     default:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnIncorrectEditToken);
