@@ -27,6 +27,10 @@ namespace ScheduleTelegramBot
 
         public string GetDaySchedule(WorkDay day) => daysSchedule[day] ?? BotReplica.OnEmptyDaySchedule;
 
-        public string GetFullSchedule() => string.Concat(daysSchedule.Values);
+        public string GetFullSchedule()
+        {
+            var fullSchedule = string.Concat(daysSchedule.Values);
+            return string.IsNullOrEmpty(fullSchedule) ? BotReplica.OnEmptyDaySchedule : fullSchedule;
+        }
     }
 }

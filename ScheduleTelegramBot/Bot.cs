@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -10,9 +11,10 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ScheduleTelegramBot
 {
-    public class Bot
+    public class Bot // TODO: Refactor fields.
     {
-        private readonly string apiAccessToken;
+        #region Fields
+
         private readonly TelegramBotClient botClient;
         private readonly Schedule schedule;
 
@@ -25,47 +27,32 @@ namespace ScheduleTelegramBot
         private static readonly Dictionary<string, BotCommandType> botCommandsMap =
             BotCommands.ToDictionary(command => command.ChatRepresentation, command => command.CommandType);
 
-        private readonly Dictionary<string, WorkDay> workDaysMap =
+        private static readonly Dictionary<string, WorkDay> workDaysMap =
             typeof(WorkDay).GetEnumValues()
                            .Cast<WorkDay>()
                            .ToDictionary(day => day.GetAttribute<ChatRepresentation>().Representation, day => day);
 
 
-        private readonly HashSet<string> accessTokens = new HashSet<string>();
+        private readonly AccessTokensCache accessTokensCache;
 
-        private readonly Dictionary<long, BotCommandType> previousCommandForChat =
-            new Dictionary<long, BotCommandType>();
+        private readonly Dictionary<long, BotCommandType> chatPreviousCommand = new Dictionary<long, BotCommandType>();
 
         private static readonly InlineKeyboardMarkup inlineWorkDaysKeyboard = new InlineKeyboardMarkup(
-            new[]
+            workDaysMap.Values.Select(day => new[]
             {
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Monday.GetAttribute<ChatRepresentation>().Representation),
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Tuesday.GetAttribute<ChatRepresentation>().Representation),
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Wednesday.GetAttribute<ChatRepresentation>().Representation)
-                },
-                new[]
-                {
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Thursday.GetAttribute<ChatRepresentation>().Representation),
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Friday.GetAttribute<ChatRepresentation>().Representation),
-                    InlineKeyboardButton.WithCallbackData(
-                        WorkDay.Saturday.GetAttribute<ChatRepresentation>().Representation)
-                }
-            });
+                InlineKeyboardButton.WithCallbackData(day.GetAttribute<ChatRepresentation>().Representation)
+            }));
 
         private readonly Dictionary<long, WorkDay> chatEditDay = new Dictionary<long, WorkDay>();
         private readonly Dictionary<long, int> chatWithInlineKeyBoard = new Dictionary<long, int>();
 
-        public Bot(string apiAccessToken)
+        #endregion
+
+        public Bot(AccessTokensCache accessTokensCache)
         {
-            accessTokens.Add(this.apiAccessToken = apiAccessToken);
-            botClient = new TelegramBotClient(apiAccessToken);
+            this.accessTokensCache = accessTokensCache;
+
+            botClient = new TelegramBotClient(accessTokensCache.ApiAccessToken);
             schedule = new Schedule();
         }
 
@@ -96,8 +83,8 @@ namespace ScheduleTelegramBot
                 await botClient.DeleteMessageAsync(chatId, chatWithInlineKeyBoard[chatId]);
                 chatWithInlineKeyBoard.Remove(chatId);
 
-                if (previousCommandForChat[chatId] == BotCommandType.RecallPassword)
-                    previousCommandForChat.Remove(chatId);
+                if (chatPreviousCommand[chatId] == BotCommandType.RecallPassword)
+                    chatPreviousCommand.Remove(chatId);
             }
 
             if (botCommandsMap.ContainsKey(firstWordOfReceivedMessage))
@@ -113,51 +100,56 @@ namespace ScheduleTelegramBot
                         await botClient.SendTextMessageAsync(chatId, today == DayOfWeek.Sunday
                                                                  ? BotReplica.OnTodayRequestInSunday
                                                                  : schedule.GetDaySchedule((WorkDay)today));
-                        previousCommandForChat.Remove(chatId);
+                        chatPreviousCommand.Remove(chatId);
                         break;
                     case BotCommandType.All:
                         await botClient.SendTextMessageAsync(chatId, schedule.GetFullSchedule());
-                        previousCommandForChat.Remove(chatId);
+                        chatPreviousCommand.Remove(chatId);
                         break;
                     case BotCommandType.CustomDay:
                         chatWithInlineKeyBoard[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotReplica.OnCorrectAccessTokenToEdit,
+                            chatId, BotReplica.OnCustomDayCommand,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
-                        previousCommandForChat[chatId] = receivedCommandType;
+                        chatPreviousCommand[chatId] = receivedCommandType;
                         break;
                     case BotCommandType.EditSchedule:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnEditScheduleRequest);
-                        previousCommandForChat[chatId] = receivedCommandType;
+                        chatPreviousCommand[chatId] = receivedCommandType;
                         break;
                     case BotCommandType.GetPassword:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
-                        previousCommandForChat[chatId] = receivedCommandType;
+                        chatPreviousCommand[chatId] = receivedCommandType;
                         break;
                     case BotCommandType.RecallPassword:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
-                        previousCommandForChat[chatId] = receivedCommandType;
+                        chatPreviousCommand[chatId] = receivedCommandType;
                         break;
                 }
             }
-            else if (previousCommandForChat.ContainsKey(chatId) &&
-                     previousCommandForChat[chatId] != BotCommandType.CustomDay)
-                switch (previousCommandForChat[chatId])
+            else if (chatPreviousCommand.ContainsKey(chatId) &&
+                     chatPreviousCommand[chatId] != BotCommandType.CustomDay)
+                switch (chatPreviousCommand[chatId])
                 {
-                    case BotCommandType.EditSchedule when accessTokens.Contains(message.Text):
+                    case BotCommandType.EditSchedule when accessTokensCache.Contains(message.Text):
                         chatWithInlineKeyBoard[chatId] = (await botClient.SendTextMessageAsync(
                             chatId, BotReplica.OnCorrectAccessTokenToEdit,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
-                    case BotCommandType.GetPassword when accessTokens.Contains(message.Text):
+                    case BotCommandType.GetPassword when accessTokensCache.Contains(message.Text):
                         var newAccessToken = GenerateAccessToken();
                         await botClient.SendTextMessageAsync(
                             chatId, $"{BotReplica.OnCorrectAccessTokenToGetPassword}{newAccessToken}");
-                        accessTokens.Add(newAccessToken);
-                        previousCommandForChat.Remove(chatId);
+                        accessTokensCache.Add(newAccessToken);
+                        chatPreviousCommand.Remove(chatId);
                         break;
-                    case BotCommandType.RecallPassword when accessTokens.Contains(message.Text):
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnCorrectAccessTokenToRemovePassword,
-                                                             replyMarkup: GetInlineAccessTokensKeyboard());
+                    case BotCommandType.RecallPassword when accessTokensCache.Contains(message.Text):
+                        if (accessTokensCache.Count == 1)
+                            await botClient.SendTextMessageAsync(
+                                chatId, BotReplica.OnCorrectAccessTokenToRemovePasswordIfNoPasswords);
+                        else
+                            await botClient.SendTextMessageAsync(
+                                chatId, BotReplica.OnCorrectAccessTokenToRemovePassword,
+                                replyMarkup: accessTokensCache.GetInlineAccessTokensKeyboard());
                         break;
                     default:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnIncorrectAccessToken);
@@ -178,7 +170,7 @@ namespace ScheduleTelegramBot
             }
             else
             {
-                previousCommandForChat.Remove(chatId);
+                chatPreviousCommand.Remove(chatId);
                 await botClient.SendTextMessageAsync(chatId, BotReplica.HelpMessage);
             }
         }
@@ -188,7 +180,7 @@ namespace ScheduleTelegramBot
             var callbackQuery = callbackQueryEventArgs.CallbackQuery;
             var chatId = callbackQuery.Message.Chat.Id;
 
-            switch (previousCommandForChat[chatId])
+            switch (chatPreviousCommand[chatId])
             {
                 case BotCommandType.EditSchedule:
                     await botClient.DeleteMessageAsync(chatId, chatWithInlineKeyBoard[chatId]);
@@ -196,7 +188,7 @@ namespace ScheduleTelegramBot
 
                     await botClient.AnswerCallbackQueryAsync(callbackQuery.Id, BotReplica.OnInlinePickDayToEdit);
                     chatEditDay[callbackQuery.Message.Chat.Id] = workDaysMap[callbackQuery.Data];
-                    previousCommandForChat.Remove(chatId);
+                    chatPreviousCommand.Remove(chatId);
                     break;
                 case BotCommandType.CustomDay:
                     await botClient.SendTextMessageAsync(chatId,
@@ -205,27 +197,26 @@ namespace ScheduleTelegramBot
                 case BotCommandType.RecallPassword:
                     await botClient.DeleteMessageAsync(chatId, chatWithInlineKeyBoard[chatId]);
 
-                    accessTokens.Remove(callbackQuery.Data);
-                    await botClient.SendTextMessageAsync(chatId, $"Access-token '{callbackQuery.Data}' отозван.",
-                                                         replyMarkup: GetInlineAccessTokensKeyboard());
+                    accessTokensCache.Remove(callbackQuery.Data);
+
+
+                    if (accessTokensCache.Count == 1)
+                        await botClient.SendTextMessageAsync(
+                            chatId, $"Последний access-token '{callbackQuery.Data}' отозван.");
+                    else
+                        await botClient.SendTextMessageAsync(chatId, $"Access-token '{callbackQuery.Data}' отозван.",
+                                                             replyMarkup: accessTokensCache
+                                                                 .GetInlineAccessTokensKeyboard());
                     break;
             }
         }
-
-        #region BotOnReceiveError
 
         private static void BotOnReceiveError(object sender, ReceiveErrorEventArgs receiveErrorEventArgs) =>
             Console.WriteLine("Received error: {0} — {1}",
                               receiveErrorEventArgs.ApiRequestException.ErrorCode,
                               receiveErrorEventArgs.ApiRequestException.Message);
 
-        #endregion
-
-        private InlineKeyboardMarkup GetInlineAccessTokensKeyboard() => new InlineKeyboardMarkup(
-            accessTokens
-                .Where(accessToken => !accessToken.Equals(apiAccessToken))
-                .Select(accessToken => new[] { InlineKeyboardButton.WithCallbackData(accessToken) }));
-
+        [SuppressMessage("ReSharper", "StringLiteralTypo")]
         private static string GenerateAccessToken(int length = 32)
         {
             const string valid = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%&";

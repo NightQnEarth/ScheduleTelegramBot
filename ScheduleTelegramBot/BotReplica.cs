@@ -12,12 +12,14 @@ namespace ScheduleTelegramBot
 
         public const string OnIncorrectAccessToken = "Access-token не опознан. Попробуйте снова.";
         public const string OnCorrectAccessTokenToEdit = "Ok, pick the day that you wanna change:";
-        public const string OnCorrectAccessTokenToGetPassword = "Ok, pick the day that you wanna change:\n";
-        public const string OnCorrectAccessTokenToRemovePassword = "Ok, send token that you want to remove.";
+        public const string OnCorrectAccessTokenToGetPassword = "Ok, your new access-token:\n";
+        public const string OnCorrectAccessTokenToRemovePassword = "Ok, pick the token you want to remove.";
+        public const string OnCorrectAccessTokenToRemovePasswordIfNoPasswords = "Bot has not access-tokens.";
         public const string OnSuccessfullyDayScheduleEdit = "Расписание успешно изменено.";
         public const string OnUnsuccessfullyDayScheduleEdit = "Некорректный формат расписания. Попробуйте снова.";
         public const string OnEmptyDaySchedule = "В этот день занятий нет.";
         public const string OnTodayRequestInSunday = "Сегодня выходной, занятий нет.";
+        public const string OnCustomDayCommand = "Ok, pick the day that you see:";
 
         public static readonly string OnInlinePickDayToEdit = string.Join(
             '\n',
