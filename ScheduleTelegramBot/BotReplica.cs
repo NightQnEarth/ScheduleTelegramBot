@@ -4,32 +4,29 @@ namespace ScheduleTelegramBot
 {
     public static class BotReplica
     {
-        public const string OnEditScheduleRequest =
-            "Отправьте ваш access-token для получени доступа к редактированию расписания.";
-
-        public const string OnAdministrationRequest =
-            "Отправьте API-access-token бота, чтобы подтвердить, что вы являетесь администратором.";
-
-        public const string OnIncorrectAccessToken = "Access-token не опознан. Попробуйте снова.";
-        public const string OnCorrectAccessTokenToEdit = "Ok, pick the day that you wanna change:";
-        public const string OnCorrectAccessTokenToGetPassword = "Ok, your new access-token:\n";
-        public const string OnCorrectAccessTokenToRemovePassword = "Ok, pick the token you want to remove.";
-        public const string OnCorrectAccessTokenToRemovePasswordIfNoPasswords = "Bot has not access-tokens.";
-        public const string OnSuccessfullyDayScheduleEdit = "Расписание успешно изменено.";
-        public const string OnUnsuccessfullyDayScheduleEdit = "Некорректный формат расписания. Попробуйте снова.";
-        public const string OnEmptyDaySchedule = "В этот день занятий нет.";
-        public const string OnTodayRequestInSunday = "Сегодня выходной, занятий нет.";
-        public const string OnCustomDayCommand = "Ok, pick the day that you see:";
+        public const string OnEditScheduleRequest = "Send your edit-access-token to get access to schedule edit.";
+        public const string OnAdministrationRequest = "Send api-access-token for bot to confirm that you are admin.";
+        public const string OnIncorrectEditToken = "Unknown edit-access-token, try again.";
+        public const string OnCorrectEditTokenToEdit = "Accept, pick the day that you wanna change:";
+        public const string OnCorrectApiTokenToGetEditToken = "Accept, your new edit-access-token:\n{0}";
+        public const string OnCorrectApiTokenToRemoveEditToken = "Ok, pick token that you wanna recall.";
+        public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens = "Bot hasn't any edit-access-tokens.";
+        public const string OnSuccessfullyDayScheduleEdit = "{0} schedule successfull edited.";
+        public const string OnUnsuccessfullyDayScheduleEdit = "Incorrect schedule format, try again.";
+        public const string OnEmptyDaySchedule = "Free lessons day.";
+        public const string OnEmptyFullSchedule = "Schedule didn't set yet.";
+        public const string OnTodayRequestInSunday = "Day off, no lessons.";
+        public const string OnCustomDayCommand = "Ok, pick day that you wanna see:";
+        public const string OnRecallLastEditToken = "Success, the last edit-access-token '{0}' was recall.";
+        public const string OnRecallNotLastEditToken = "Success, edit-access-token '{0}' was recall.";
 
         public static readonly string OnInlinePickDayToEdit = string.Join(
             '\n',
-            "Ok, отправьте расписание выбранного дня в следующем формате:\n",
-            "I   - 9:00,  Название предмета, номер аудитории, имя преподавателя",
-            "II  - 10:40, Название предмета, номер аудитории, имя преподавателя",
-            "III - 12:50, Название предмета, номер аудитории, имя преподавателя",
-            "IV  - 14:30, Название предмета, номер аудитории, имя преподавателя",
-            "V   - 16:10, Название предмета, номер аудитории, имя преподавателя",
-            "VI  - 17:50, Название предмета, номер аудитории, имя преподавателя");
+            "{0} picked. Send day schedule in specified format:\n",
+            "9:00 (I), Web and Html, 512, Solodushkin S.I.",
+            "10:40 (II), Combinatorial algorithms, 622, Asanov M.O.",
+            "12:50 (III), Physical education",
+            "16:10 (V), OOP(even week, second subgroup), 526");
 
         public static readonly string HelpMessage;
 

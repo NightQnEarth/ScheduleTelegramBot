@@ -21,13 +21,13 @@ namespace ScheduleTelegramBot
             this.cacheFileName = cacheFileName;
             jsonSerializerSettings = new JsonSerializerSettings { Formatting = Formatting.Indented };
             accessTokens = LoadCache();
-
-            throw new NotImplementedException();
         }
 
         public int Count => accessTokens.Count;
 
-        public bool Contains(string accessToken) => accessTokens.Contains(accessToken);
+        public bool IsApiAccessToken(string anyString) => ApiAccessToken.Equals(anyString);
+
+        public bool IsValidToken(string anyString) => IsApiAccessToken(anyString) || accessTokens.Contains(anyString);
 
         public void Add(string accessToken)
         {
@@ -54,7 +54,7 @@ namespace ScheduleTelegramBot
             }
             catch (Exception exception) when (exception is JsonException || exception is IOException)
             {
-                Console.WriteLine("Can't find or load existing cache-file. It will create new cache file.");
+                Console.WriteLine("Can't find or load existing cache-file. Will create new cache file.");
                 return new HashSet<string>();
             }
         }

@@ -11,8 +11,7 @@ namespace ScheduleTelegramBot
                            .Cast<WorkDay>()
                            .ToDictionary(day => day, day => default(string));
 
-        private readonly Regex dayScheduleTemplate =
-            new Regex(@"(?:[IV]+\s*-\s+\d{1,2}:\d{1,2},\s+(?:[ \w]+,)+.*(\n|$))+"); // TODO: (\n|$) or enough $?
+        private readonly Regex dayScheduleTemplate = new Regex(@"(?:\d{1,2}:\d{2}\s+\([IV]{1,3}\),\s+.*(\n|$)){1,6}");
 
         public bool TrySetDaySchedule(WorkDay day, string daySchedule)
         {
@@ -25,12 +24,14 @@ namespace ScheduleTelegramBot
             return true;
         }
 
-        public string GetDaySchedule(WorkDay day) => daysSchedule[day] ?? BotReplica.OnEmptyDaySchedule;
+        public string GetDaySchedule(WorkDay day) =>
+            daysSchedule[day] is null
+                ? $"-----{day.GetAttribute<ChatRepresentation>().Representation}:{BotReplica.OnEmptyDaySchedule}"
+                : $"-----{day.GetAttribute<ChatRepresentation>().Representation}:\n{daysSchedule[day]}";
 
-        public string GetFullSchedule()
-        {
-            var fullSchedule = string.Concat(daysSchedule.Values);
-            return string.IsNullOrEmpty(fullSchedule) ? BotReplica.OnEmptyDaySchedule : fullSchedule;
-        }
+        public string GetFullSchedule() =>
+            daysSchedule.Values.Any(schedule => !string.IsNullOrEmpty(schedule))
+                ? string.Join('\n', daysSchedule.Keys.Select(day => $"{GetDaySchedule(day)}\n"))
+                : BotReplica.OnEmptyFullSchedule;
     }
 }

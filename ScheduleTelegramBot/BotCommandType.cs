@@ -3,27 +3,27 @@ namespace ScheduleTelegramBot
     public enum BotCommandType
     {
         [ChatRepresentation("/today")]
-        [CommandDescription("Расписание на сегодня.")]
+        [CommandDescription("Today schedule.")]
         Today,
 
-        [ChatRepresentation("/all")]
-        [CommandDescription("Полное расписание.")]
-        All,
+        [ChatRepresentation("/full")]
+        [CommandDescription("Full schedule.")]
+        Full,
 
         [ChatRepresentation("/custom_day")]
-        [CommandDescription("Расписание в конкретный день недели.")]
+        [CommandDescription("Custom day schedule.")]
         CustomDay,
 
         [ChatRepresentation("/edit_schedule")]
-        [CommandDescription("Изменить расписание.")]
+        [CommandDescription("Edit schedule.")]
         EditSchedule,
 
-        [ChatRepresentation("/get_password")]
-        [CommandDescription("Получить доступ к редактированию расписания.")]
-        GetPassword,
+        [ChatRepresentation("/get_access")]
+        [CommandDescription("Get edit-access-token to edit schedule.")]
+        GetAccess,
 
-        [ChatRepresentation("/recall_password")]
-        [CommandDescription("Отозвать доступ к редактированию расписания.")]
-        RecallPassword
+        [ChatRepresentation("/recall_access")]
+        [CommandDescription("Recall edit-access-token to edit schedule.")]
+        RecallAccess
     }
 }

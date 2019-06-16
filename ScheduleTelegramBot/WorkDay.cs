@@ -2,22 +2,22 @@ namespace ScheduleTelegramBot
 {
     public enum WorkDay
     {
-        [ChatRepresentation("Mo")]
+        [ChatRepresentation("Monday")]
         Monday,
 
-        [ChatRepresentation("Tu")]
+        [ChatRepresentation("Tuesday")]
         Tuesday,
 
-        [ChatRepresentation("We")]
+        [ChatRepresentation("Wednesday")]
         Wednesday,
 
-        [ChatRepresentation("Th")]
+        [ChatRepresentation("Thursday")]
         Thursday,
 
-        [ChatRepresentation("Fr")]
+        [ChatRepresentation("Friday")]
         Friday,
 
-        [ChatRepresentation("Sa")]
+        [ChatRepresentation("Saturday")]
         Saturday
     }
 }
