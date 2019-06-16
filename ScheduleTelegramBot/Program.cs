@@ -2,7 +2,7 @@
 using System.Text;
 using System.Threading;
 
-namespace ScheduleTelegramBot // TODO: Change Procfile and others.. 
+namespace ScheduleTelegramBot
 {
     public static class Program
     {

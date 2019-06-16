@@ -203,7 +203,7 @@ namespace ScheduleTelegramBot
                     {
                         await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotReplica.OnRecallLastEditToken, callbackQuery.Data));
-                        chatIdKeyboardMessageId.Remove(chatId);
+                        chatIdPreviousCommand.Remove(chatId);
                     }
                     else
                         chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
