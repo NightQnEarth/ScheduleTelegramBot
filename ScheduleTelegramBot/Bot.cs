@@ -108,8 +108,8 @@ namespace ScheduleTelegramBot
                     case BotCommand.Today:
                         var today = message.Date.DayOfWeek;
                         await botClient.SendTextMessageAsync(chatId, today == DayOfWeek.Sunday
-                                                                 ? BotReplica.OnTodayRequestInSunday
-                                                                 : schedule.GetDaySchedule((WorkDay)today));
+                                                                 ? BotPhrases.OnTodayRequestInSunday
+                                                                 : schedule.GetDaySchedule((WorkDay)(today - 1)));
 
                         previousCommandByChatId.Remove(chatId);
                         break;
@@ -117,66 +117,66 @@ namespace ScheduleTelegramBot
                         await botClient.SendTextMessageAsync(chatId, schedule.GetFullSchedule());
                         previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommand.CustomDay:
+                    case BotCommand.SpecificDay:
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotReplica.OnCustomDayCommand,
+                            chatId, BotPhrases.OnSpecificDayCommand,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                     case BotCommand.EditSchedule:
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnEditScheduleRequest);
+                        await botClient.SendTextMessageAsync(chatId, BotPhrases.OnEditScheduleRequest);
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                     case BotCommand.ClearDaySchedule:
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnEditScheduleRequest);
+                        await botClient.SendTextMessageAsync(chatId, BotPhrases.OnEditScheduleRequest);
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                     case BotCommand.GetAccess:
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
+                        await botClient.SendTextMessageAsync(chatId, BotPhrases.OnAdministrationRequest);
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
-                    case BotCommand.RecallAccess:
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
+                    case BotCommand.RevokeAccess:
+                        await botClient.SendTextMessageAsync(chatId, BotPhrases.OnAdministrationRequest);
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                 }
             }
             else if (previousCommandByChatId.ContainsKey(chatId) &&
-                     previousCommandByChatId[chatId] != BotCommand.CustomDay)
+                     previousCommandByChatId[chatId] != BotCommand.SpecificDay)
                 switch (previousCommandByChatId[chatId])
                 {
                     case BotCommand.EditSchedule when accessTokensCache.IsValidToken(message.Text):
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotReplica.OnCorrectEditTokenToEdit,
+                            chatId, BotPhrases.OnCorrectEditTokenToEdit,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
                     case BotCommand.ClearDaySchedule when accessTokensCache.IsValidToken(message.Text):
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotReplica.OnCorrectEditTokenToClearDay,
+                            chatId, BotPhrases.OnCorrectEditTokenToClearDay,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
                     case BotCommand.GetAccess when accessTokensCache.IsApiAccessToken(message.Text):
                         var newAccessToken = AccessTokensCache.GenerateAccessToken();
                         await botClient.SendTextMessageAsync(
-                            chatId, string.Format(BotReplica.OnCorrectApiTokenToGetEditToken, newAccessToken));
+                            chatId, string.Format(BotPhrases.OnCorrectApiTokenToGetEditToken, newAccessToken));
                         accessTokensCache.Add(newAccessToken);
                         previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommand.RecallAccess when accessTokensCache.IsApiAccessToken(message.Text):
+                    case BotCommand.RevokeAccess when accessTokensCache.IsApiAccessToken(message.Text):
                         if (accessTokensCache.Count == 0)
                         {
                             await botClient.SendTextMessageAsync(
-                                chatId, BotReplica.OnCorrectApiTokenToRemoveEditTokenIfNoTokens);
+                                chatId, BotPhrases.OnCorrectApiTokenToRemoveEditTokenIfNoTokens);
                             previousCommandByChatId.Remove(chatId);
                         }
                         else
                             keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                                chatId, BotReplica.OnCorrectApiTokenToRemoveEditToken,
+                                chatId, BotPhrases.OnCorrectApiTokenToRemoveEditToken,
                                 replyMarkup: accessTokensCache.GetInlineAccessTokensKeyboard())).MessageId;
 
                         break;
                     default:
-                        await botClient.SendTextMessageAsync(chatId, BotReplica.OnIncorrectEditToken);
+                        await botClient.SendTextMessageAsync(chatId, BotPhrases.OnIncorrectEditToken);
                         break;
                 }
             else if (selectedToEditDayByChatId.ContainsKey(chatId))
@@ -184,7 +184,7 @@ namespace ScheduleTelegramBot
                 if (schedule.TrySetDaySchedule(selectedToEditDayByChatId[chatId], message.Text))
                 {
                     keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                        chatId, string.Format(BotReplica.OnSuccessfullyDayScheduleEdit,
+                        chatId, string.Format(BotPhrases.OnSuccessfullyDayScheduleEdit,
                                               RepresentByWorkDay[selectedToEditDayByChatId[chatId]]),
                         replyMarkup: inlineWorkDaysKeyboard)).MessageId;
 
@@ -192,12 +192,12 @@ namespace ScheduleTelegramBot
                     selectedToEditDayByChatId.Remove(chatId);
                 }
                 else
-                    await botClient.SendTextMessageAsync(chatId, BotReplica.OnUnsuccessfullyDayScheduleEdit);
+                    await botClient.SendTextMessageAsync(chatId, BotPhrases.OnUnsuccessfullyDayScheduleEdit);
             }
             else
             {
                 previousCommandByChatId.Remove(chatId);
-                await botClient.SendTextMessageAsync(chatId, BotReplica.HelpMessage);
+                await botClient.SendTextMessageAsync(chatId, BotPhrases.HelpMessage);
             }
         }
 
@@ -213,7 +213,7 @@ namespace ScheduleTelegramBot
                     keyboardMessageIdByChatId.Remove(chatId);
 
                     await botClient.SendTextMessageAsync(
-                        chatId, string.Format(BotReplica.OnInlinePickDayToEdit, callbackQuery.Data));
+                        chatId, string.Format(BotPhrases.OnInlineSelectDayToEdit, callbackQuery.Data));
                     selectedToEditDayByChatId[callbackQuery.Message.Chat.Id] = workDayByRepresent[callbackQuery.Data];
                     previousCommandByChatId.Remove(chatId);
                     break;
@@ -224,14 +224,14 @@ namespace ScheduleTelegramBot
                     schedule.ClearDaySchedule(workDayByRepresent[callbackQuery.Data]);
 
                     await botClient.SendTextMessageAsync(
-                        chatId, string.Format(BotReplica.OnInlinePickDayToClear, callbackQuery.Data));
+                        chatId, string.Format(BotPhrases.OnInlineSelectDayToClear, callbackQuery.Data));
                     previousCommandByChatId.Remove(chatId);
                     break;
-                case BotCommand.CustomDay:
+                case BotCommand.SpecificDay:
                     await botClient.SendTextMessageAsync(
                         chatId, schedule.GetDaySchedule(workDayByRepresent[callbackQuery.Data]));
                     break;
-                case BotCommand.RecallAccess:
+                case BotCommand.RevokeAccess:
                     await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
 
                     accessTokensCache.Remove(callbackQuery.Data);
@@ -239,14 +239,14 @@ namespace ScheduleTelegramBot
                     if (accessTokensCache.Count == 0)
                     {
                         await botClient.SendTextMessageAsync(
-                            chatId, string.Format(BotReplica.OnRecallLastEditToken, callbackQuery.Data));
+                            chatId, string.Format(BotPhrases.OnRevokeLastEditToken, callbackQuery.Data));
 
                         keyboardMessageIdByChatId.Remove(chatId);
                         previousCommandByChatId.Remove(chatId);
                     }
                     else
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, string.Format(BotReplica.OnRecallNotLastEditToken, callbackQuery.Data),
+                            chatId, string.Format(BotPhrases.OnRevokeNotLastEditToken, callbackQuery.Data),
                             replyMarkup: accessTokensCache
                                 .GetInlineAccessTokensKeyboard())).MessageId;
 

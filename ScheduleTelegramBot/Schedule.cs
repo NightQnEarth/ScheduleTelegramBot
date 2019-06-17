@@ -19,13 +19,13 @@ namespace ScheduleTelegramBot
 
         public string GetDaySchedule(WorkDay day) =>
             daysSchedule[day] is null
-                ? $"-----{Bot.RepresentByWorkDay[day]}: {BotReplica.OnEmptyDaySchedule}"
+                ? $"-----{Bot.RepresentByWorkDay[day]}: {BotPhrases.OnEmptyDaySchedule}"
                 : $"-----{Bot.RepresentByWorkDay[day]}:\n{daysSchedule[day]}";
 
         public string GetFullSchedule() =>
             daysSchedule.Values.Any(schedule => !string.IsNullOrEmpty(schedule))
                 ? string.Join('\n', daysSchedule.Keys.Select(day => $"{GetDaySchedule(day)}\n"))
-                : BotReplica.OnEmptyFullSchedule;
+                : BotPhrases.OnEmptyFullSchedule;
 
         public void ClearDaySchedule(WorkDay day) => daysSchedule[day] = null;
     }

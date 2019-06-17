@@ -1,9 +1,8 @@
-using System.ComponentModel;
 using System.Text;
 
 namespace ScheduleTelegramBot
 {
-    public static class BotReplica
+    public static class BotPhrases
     {
         public const string OnEditScheduleRequest = "Send your edit-access-token to get access to schedule editing.";
         public const string OnAdministrationRequest = "Send api-access-token for bot to confirm that you are admin.";
@@ -17,15 +16,15 @@ namespace ScheduleTelegramBot
         public const string OnEmptyDaySchedule = "free day.";
         public const string OnEmptyFullSchedule = "Schedule hasn't been set yet.";
         public const string OnTodayRequestInSunday = "Day off, no lessons.";
-        public const string OnCustomDayCommand = "Ok, select a day that you wanna look at:";
-        public const string OnRecallLastEditToken = "Success, last edit-access-token '{0}' has been revoke.";
-        public const string OnRecallNotLastEditToken = "Success, edit-access-token '{0}' has been revoke.";
-        public const string OnInlinePickDayToClear = "{0} has been cleared.";
+        public const string OnSpecificDayCommand = "Ok, select a day that you wanna look at:";
+        public const string OnRevokeLastEditToken = "Success, last edit-access-token '{0}' has been revoke.";
+        public const string OnRevokeNotLastEditToken = "Success, edit-access-token '{0}' has been revoke.";
+        public const string OnInlineSelectDayToClear = "{0} has been cleared.";
 
         public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens =
             "Accepted, but there aren't registered edit-access-tokens.";
 
-        public static readonly string OnInlinePickDayToEdit = string.Join(
+        public static readonly string OnInlineSelectDayToEdit = string.Join(
             '\n',
             "{0} selected. Send schedule for the day in following format:\n",
             "9:00 (I), Web and Html, 512, Solodushkin S.I.",
@@ -35,11 +34,11 @@ namespace ScheduleTelegramBot
 
         public static readonly string HelpMessage;
 
-        static BotReplica()
+        static BotPhrases()
         {
             var stringBuilder = new StringBuilder();
             foreach (var (represent, botCommand) in Bot.BotCommandByRepresent)
-                stringBuilder.Append($"{represent} - {botCommand.GetAttribute<DescriptionAttribute>()}\n");
+                stringBuilder.Append($"{represent} - {botCommand.GetAttribute<CommandDescription>()}\n");
 
             HelpMessage = stringBuilder.ToString();
         }

@@ -10,9 +10,9 @@ namespace ScheduleTelegramBot
         [CommandDescription("Full schedule.")]
         Full,
 
-        [ChatRepresentation("/custom_day")]
-        [CommandDescription("Custom day schedule.")]
-        CustomDay,
+        [ChatRepresentation("/specific_day")]
+        [CommandDescription("Specific day schedule.")]
+        SpecificDay,
 
         [ChatRepresentation("/edit_schedule")]
         [CommandDescription("Edit schedule.")]
@@ -26,8 +26,8 @@ namespace ScheduleTelegramBot
         [CommandDescription("Get edit-access-token to edit schedule.")]
         GetAccess,
 
-        [ChatRepresentation("/recall_access")]
-        [CommandDescription("Recall edit-access-token to edit schedule.")]
-        RecallAccess
+        [ChatRepresentation("/revoke_access")]
+        [CommandDescription("Revoke edit-access-token to edit schedule.")]
+        RevokeAccess
     }
 }

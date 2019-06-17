@@ -55,6 +55,12 @@ namespace ScheduleTelegramBot
                 .Where(accessToken => !accessToken.Equals(ApiAccessToken))
                 .Select(accessToken => new[] { InlineKeyboardButton.WithCallbackData(accessToken) }));
 
+        private static void PrintException(Exception exception)
+        {
+            Console.WriteLine(exception.Message);
+            while (!((exception = exception.InnerException) is null)) Console.WriteLine(exception.Message);
+        }
+
         private IEnumerable<string> LoadCache()
         {
             Console.WriteLine("Loading existing cache file...");
@@ -66,8 +72,7 @@ namespace ScheduleTelegramBot
             }
             catch (Exception exception) when (exception is IOException)
             {
-                Console.WriteLine(exception.Message);
-                while (!(exception is null)) Console.WriteLine((exception = exception.InnerException).Message);
+                PrintException(exception);
             }
 
             return new HashSet<string>();
@@ -83,8 +88,7 @@ namespace ScheduleTelegramBot
             }
             catch (Exception exception) when (exception is IOException)
             {
-                Console.WriteLine(exception.Message);
-                while (!(exception is null)) Console.WriteLine((exception = exception.InnerException).Message);
+                PrintException(exception);
             }
         }
     }
