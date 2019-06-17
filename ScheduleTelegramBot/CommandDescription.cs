@@ -4,8 +4,10 @@ namespace ScheduleTelegramBot
 {
     public class CommandDescription : Attribute
     {
-        public readonly string Description;
+        private readonly string description;
 
-        public CommandDescription(string description) => Description = description;
+        public CommandDescription(string description) => this.description = description;
+
+        public override string ToString() => description;
     }
 }

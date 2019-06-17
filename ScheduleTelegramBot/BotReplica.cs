@@ -1,30 +1,33 @@
+using System.ComponentModel;
 using System.Text;
 
 namespace ScheduleTelegramBot
 {
     public static class BotReplica
     {
-        public const string OnEditScheduleRequest = "Send your edit-access-token to get access to schedule edit.";
+        public const string OnEditScheduleRequest = "Send your edit-access-token to get access to schedule editing.";
         public const string OnAdministrationRequest = "Send api-access-token for bot to confirm that you are admin.";
         public const string OnIncorrectEditToken = "Unknown edit-access-token, try again.";
-        public const string OnCorrectEditTokenToEdit = "Accept, pick the day that you wanna change:";
-        public const string OnCorrectEditTokenToClearDay = "Accept, pick the day that you wanna clear:";
-        public const string OnCorrectApiTokenToGetEditToken = "Accept, your new edit-access-token:\n{0}";
-        public const string OnCorrectApiTokenToRemoveEditToken = "Ok, pick token that you wanna recall.";
-        public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens = "Accept, but bot hasn't edit-access-tokens.";
-        public const string OnSuccessfullyDayScheduleEdit = "{0} schedule successfull edited.";
+        public const string OnCorrectEditTokenToEdit = "Accepted, select a day that you wanna change:";
+        public const string OnCorrectEditTokenToClearDay = "Accepted, select a day that you wanna clear:";
+        public const string OnCorrectApiTokenToGetEditToken = "Accepted, your new edit-access-token:\n{0}";
+        public const string OnCorrectApiTokenToRemoveEditToken = "Ok, select a token that you wanna revoke:";
+        public const string OnSuccessfullyDayScheduleEdit = "{0} schedule successfully edited.";
         public const string OnUnsuccessfullyDayScheduleEdit = "Incorrect schedule format, try again.";
-        public const string OnEmptyDaySchedule = "free lessons day.";
-        public const string OnEmptyFullSchedule = "Schedule didn't set yet.";
+        public const string OnEmptyDaySchedule = "free day.";
+        public const string OnEmptyFullSchedule = "Schedule hasn't been set yet.";
         public const string OnTodayRequestInSunday = "Day off, no lessons.";
-        public const string OnCustomDayCommand = "Ok, pick day that you wanna see:";
-        public const string OnRecallLastEditToken = "Success, the last edit-access-token '{0}' was recall.";
-        public const string OnRecallNotLastEditToken = "Success, edit-access-token '{0}' was recall.";
-        public const string OnInlinePickDayToClear = "{0} was clear.";
+        public const string OnCustomDayCommand = "Ok, select a day that you wanna look at:";
+        public const string OnRecallLastEditToken = "Success, last edit-access-token '{0}' has been revoke.";
+        public const string OnRecallNotLastEditToken = "Success, edit-access-token '{0}' has been revoke.";
+        public const string OnInlinePickDayToClear = "{0} has been cleared.";
+
+        public const string OnCorrectApiTokenToRemoveEditTokenIfNoTokens =
+            "Accepted, but there aren't registered edit-access-tokens.";
 
         public static readonly string OnInlinePickDayToEdit = string.Join(
             '\n',
-            "{0} picked. Send day schedule in specified format:\n",
+            "{0} selected. Send schedule for the day in following format:\n",
             "9:00 (I), Web and Html, 512, Solodushkin S.I.",
             "10:40 (II), Combinatorial algorithms, 622, Asanov M.O.",
             "12:50 (III), Physical education",
@@ -35,8 +38,8 @@ namespace ScheduleTelegramBot
         static BotReplica()
         {
             var stringBuilder = new StringBuilder();
-            foreach (var botCommand in Bot.BotCommands)
-                stringBuilder.Append($"{botCommand.ChatRepresentation} - {botCommand.Description}\n");
+            foreach (var (represent, botCommand) in Bot.BotCommandByRepresent)
+                stringBuilder.Append($"{represent} - {botCommand.GetAttribute<DescriptionAttribute>()}\n");
 
             HelpMessage = stringBuilder.ToString();
         }

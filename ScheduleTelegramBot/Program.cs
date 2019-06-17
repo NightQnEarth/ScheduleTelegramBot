@@ -14,7 +14,7 @@ namespace ScheduleTelegramBot
             var apiAccessToken = File.ReadAllText(TokenStorageName, Encoding.UTF8);
             var accessTokensCache = new AccessTokensCache(apiAccessToken, TokensCacheFilename);
 
-            new Bot(accessTokensCache).StartReceiving(Timeout.Infinite);
+            new Bot(accessTokensCache).StartReceiving(Timeout.InfiniteTimeSpan);
         }
     }
 }

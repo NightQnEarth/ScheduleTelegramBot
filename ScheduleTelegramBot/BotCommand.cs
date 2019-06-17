@@ -1,29 +1,33 @@
-using System.Diagnostics.CodeAnalysis;
-
 namespace ScheduleTelegramBot
 {
-    public class BotCommand
+    public enum BotCommand
     {
-        public readonly BotCommandType CommandType;
-        public readonly string ChatRepresentation;
-        public readonly string Description;
+        [ChatRepresentation("/today")]
+        [CommandDescription("Today schedule.")]
+        Today,
 
-        [SuppressMessage("ReSharper", "PossibleMultipleEnumeration")]
-        public BotCommand(BotCommandType commandType)
-        {
-            CommandType = commandType;
-            (ChatRepresentation, Description) = (commandType.GetAttribute<ChatRepresentation>().Representation,
-                                                 commandType.GetAttribute<CommandDescription>().Description);
-        }
+        [ChatRepresentation("/full")]
+        [CommandDescription("Full schedule.")]
+        Full,
 
-        public override bool Equals(object obj) => obj is BotCommand botCommand && botCommand.Equals(this);
+        [ChatRepresentation("/custom_day")]
+        [CommandDescription("Custom day schedule.")]
+        CustomDay,
 
-        // TODO: access modifier.
-        // ReSharper disable once MemberCanBePrivate.Global
-        public bool Equals(BotCommand other) => CommandType == other.CommandType;
+        [ChatRepresentation("/edit_schedule")]
+        [CommandDescription("Edit schedule.")]
+        EditSchedule,
 
-        public override int GetHashCode() => (int)CommandType;
+        [ChatRepresentation("/clear_day_schedule")]
+        [CommandDescription("Delete schedule of custom day.")]
+        ClearDaySchedule,
 
-        public override string ToString() => ChatRepresentation;
+        [ChatRepresentation("/get_access")]
+        [CommandDescription("Get edit-access-token to edit schedule.")]
+        GetAccess,
+
+        [ChatRepresentation("/recall_access")]
+        [CommandDescription("Recall edit-access-token to edit schedule.")]
+        RecallAccess
     }
 }

@@ -4,8 +4,10 @@ namespace ScheduleTelegramBot
 {
     public class ChatRepresentation : Attribute
     {
-        public readonly string Representation;
+        private readonly string representation;
 
-        public ChatRepresentation(string representation) => Representation = representation;
+        public ChatRepresentation(string representation) => this.representation = representation;
+
+        public override string ToString() => representation;
     }
 }

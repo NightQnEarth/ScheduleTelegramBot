@@ -3,27 +3,38 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
-using Newtonsoft.Json;
+using System.Text.RegularExpressions;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace ScheduleTelegramBot
 {
     public class AccessTokensCache
     {
+        private const string TokenSymbolsPool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%&";
+        private const int TokenLength = 32;
+
         public readonly string ApiAccessToken;
+        private static readonly Regex accessTokenFormat = new Regex($@"[{TokenSymbolsPool}]{{{TokenLength}}}");
         private readonly HashSet<string> accessTokens;
         private readonly string cacheFileName;
-        private readonly JsonSerializerSettings jsonSerializerSettings;
 
         public AccessTokensCache(string apiAccessToken, string cacheFileName)
         {
             ApiAccessToken = apiAccessToken;
             this.cacheFileName = cacheFileName;
-            jsonSerializerSettings = new JsonSerializerSettings { Formatting = Formatting.Indented };
-            accessTokens = LoadCache();
+            accessTokens = LoadCache().ToHashSet();
         }
 
         public int Count => accessTokens.Count;
+
+        public static string GenerateAccessToken(int tokenLength = TokenLength)
+        {
+            var resultToken = new StringBuilder();
+            Random random = new Random();
+            while (0 < tokenLength--) resultToken.Append(TokenSymbolsPool[random.Next(TokenSymbolsPool.Length)]);
+
+            return resultToken.ToString();
+        }
 
         public bool IsApiAccessToken(string anyString) => ApiAccessToken.Equals(anyString);
 
@@ -31,12 +42,12 @@ namespace ScheduleTelegramBot
 
         public void Add(string accessToken)
         {
-            if (accessTokens.Add(accessToken)) SaveCache();
+            if (accessTokens.Add(accessToken)) SaveCache(accessToken);
         }
 
         public void Remove(string accessToken)
         {
-            if (accessTokens.Remove(accessToken)) SaveCache();
+            if (accessTokens.Remove(accessToken)) SaveCache(accessToken);
         }
 
         public InlineKeyboardMarkup GetInlineAccessTokensKeyboard() => new InlineKeyboardMarkup(
@@ -44,34 +55,36 @@ namespace ScheduleTelegramBot
                 .Where(accessToken => !accessToken.Equals(ApiAccessToken))
                 .Select(accessToken => new[] { InlineKeyboardButton.WithCallbackData(accessToken) }));
 
-        private HashSet<string> LoadCache()
+        private IEnumerable<string> LoadCache()
         {
+            Console.WriteLine("Loading existing cache file...");
+
             try
             {
-                Console.WriteLine("Loading existing cache file...");
-                return JsonConvert.DeserializeObject<HashSet<string>>(File.ReadAllText(cacheFileName),
-                                                                      jsonSerializerSettings);
+                return File.ReadAllLines(cacheFileName, Encoding.UTF8)
+                           .Where(line => accessTokenFormat.Match(line, 0, line.Length).Success);
             }
-            catch (Exception exception) when (exception is JsonException || exception is IOException)
+            catch (Exception exception) when (exception is IOException)
             {
-                Console.WriteLine("Can't find or load existing cache-file. Will create new cache file.");
-                return new HashSet<string>();
+                Console.WriteLine(exception.Message);
+                while (!(exception is null)) Console.WriteLine((exception = exception.InnerException).Message);
             }
+
+            return new HashSet<string>();
         }
 
-        private void SaveCache()
+        private void SaveCache(string newAccessToken)
         {
             Console.WriteLine("Storing cache...");
 
             try
             {
-                using (var fileStream = new FileStream(cacheFileName, FileMode.OpenOrCreate, FileAccess.Write))
-                    using (var streamWriter = new StreamWriter(fileStream, Encoding.UTF8, 1024, true))
-                        streamWriter.WriteLine(JsonConvert.SerializeObject(accessTokens, jsonSerializerSettings));
+                File.AppendAllText(cacheFileName, newAccessToken + Environment.NewLine, Encoding.UTF8);
             }
-            catch (Exception exception) when (exception is JsonException || exception is IOException)
+            catch (Exception exception) when (exception is IOException)
             {
-                Console.WriteLine(exception);
+                Console.WriteLine(exception.Message);
+                while (!(exception is null)) Console.WriteLine((exception = exception.InnerException).Message);
             }
         }
     }

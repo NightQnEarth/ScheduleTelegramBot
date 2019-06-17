@@ -1,11 +1,12 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Args;
+using Telegram.Bot.Exceptions;
 using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -13,30 +14,30 @@ namespace ScheduleTelegramBot
 {
     public class Bot
     {
-        public static readonly HashSet<BotCommand> BotCommands;
-        private static readonly Dictionary<string, BotCommandType> representCommandTypes;
-        private static readonly Dictionary<string, WorkDay> representWorkDays;
+        public static readonly Dictionary<string, BotCommand> BotCommandByRepresent;
+        public static readonly Dictionary<WorkDay, string> RepresentByWorkDay;
+        private static readonly Dictionary<string, WorkDay> workDayByRepresent;
         private static readonly InlineKeyboardMarkup inlineWorkDaysKeyboard;
         private readonly AccessTokensCache accessTokensCache;
         private readonly TelegramBotClient botClient;
         private readonly Schedule schedule;
-        private readonly Dictionary<long, BotCommandType> chatIdPreviousCommand;
-        private readonly Dictionary<long, WorkDay> chatIdPickedToEditDay;
-        private readonly Dictionary<long, int> chatIdKeyboardMessageId;
+        private readonly Dictionary<long, BotCommand> previousCommandByChatId;
+        private readonly Dictionary<long, WorkDay> selectedToEditDayByChatId;
+        private readonly Dictionary<long, int> keyboardMessageIdByChatId;
 
         static Bot()
         {
-            BotCommands = typeof(BotCommandType).GetEnumValues().Cast<BotCommandType>()
-                                                .Select(type => new BotCommand(type)).ToHashSet();
-            representCommandTypes = BotCommands.ToDictionary(command => command.ChatRepresentation,
-                                                             command => command.CommandType);
-            representWorkDays = typeof(WorkDay).GetEnumValues().Cast<WorkDay>()
-                                               .ToDictionary(
-                                                   day => day.GetAttribute<ChatRepresentation>().Representation,
-                                                   day => day);
-            inlineWorkDaysKeyboard = new InlineKeyboardMarkup(representWorkDays.Values.Select(day => new[]
+            BotCommandByRepresent = typeof(BotCommand).GetEnumValues().Cast<BotCommand>().ToDictionary(
+                command => command
+                           .GetAttribute<ChatRepresentation>().ToString(),
+                command => command);
+            workDayByRepresent = typeof(WorkDay).GetEnumValues().Cast<WorkDay>().ToDictionary(
+                day => day.GetAttribute<ChatRepresentation>().ToString(),
+                day => day);
+            RepresentByWorkDay = workDayByRepresent.ToDictionary(pair => pair.Value, pair => pair.Key);
+            inlineWorkDaysKeyboard = new InlineKeyboardMarkup(workDayByRepresent.Values.Select(day => new[]
             {
-                InlineKeyboardButton.WithCallbackData(day.GetAttribute<ChatRepresentation>().Representation)
+                InlineKeyboardButton.WithCallbackData(RepresentByWorkDay[day])
             }));
         }
 
@@ -45,25 +46,42 @@ namespace ScheduleTelegramBot
             this.accessTokensCache = accessTokensCache;
             botClient = new TelegramBotClient(accessTokensCache.ApiAccessToken);
             schedule = new Schedule();
-            chatIdPreviousCommand = new Dictionary<long, BotCommandType>();
-            chatIdPickedToEditDay = new Dictionary<long, WorkDay>();
-            chatIdKeyboardMessageId = new Dictionary<long, int>();
+            previousCommandByChatId = new Dictionary<long, BotCommand>();
+            selectedToEditDayByChatId = new Dictionary<long, WorkDay>();
+            keyboardMessageIdByChatId = new Dictionary<long, int>();
         }
 
-        public void StartReceiving(int millisecondsToWork)
+        public void StartReceiving(TimeSpan workTime)
         {
-            botClient.OnMessage += BotOnMessage;
-            botClient.OnCallbackQuery += BotOnCallbackQuery;
-            botClient.OnReceiveError += BotOnReceiveError;
+            botClient.OnMessage += BotOnMessageAsync;
+            botClient.OnCallbackQuery += BotOnCallbackQueryAsync;
+            botClient.OnReceiveError += BotOnReceiveErrorAsync;
 
-            botClient.StartReceiving();
+            var timer = new Stopwatch();
+            var workTimeIsInfinity = workTime == Timeout.InfiniteTimeSpan;
 
-            Thread.Sleep(millisecondsToWork);
+            if (!workTimeIsInfinity) timer.Start();
 
-            botClient.StopReceiving();
+            while (true)
+            {
+                try
+                {
+                    botClient.StartReceiving();
+
+                    Thread.Sleep(workTimeIsInfinity ? workTime : workTime - timer.Elapsed);
+
+                    botClient.StopReceiving();
+                }
+                catch (ApiRequestException exception)
+                {
+                    Console.WriteLine(exception);
+                }
+
+                if (!workTimeIsInfinity && timer.Elapsed >= workTime) break;
+            }
         }
 
-        private async void BotOnMessage(object sender, MessageEventArgs messageEventArgs)
+        private async void BotOnMessageAsync(object sender, MessageEventArgs messageEventArgs)
         {
             var message = messageEventArgs.Message;
 
@@ -72,86 +90,87 @@ namespace ScheduleTelegramBot
             var chatId = message.Chat.Id;
             var firstWordOfReceivedMessage = message.Text.Split().First();
 
-            if (chatIdKeyboardMessageId.ContainsKey(chatId))
+            if (keyboardMessageIdByChatId.ContainsKey(chatId))
             {
-                await botClient.DeleteMessageAsync(chatId, chatIdKeyboardMessageId[chatId]);
-                chatIdKeyboardMessageId.Remove(chatId);
-                chatIdPreviousCommand.Remove(chatId);
+                await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
+                keyboardMessageIdByChatId.Remove(chatId);
+                previousCommandByChatId.Remove(chatId);
             }
 
-            if (representCommandTypes.ContainsKey(firstWordOfReceivedMessage))
+            if (BotCommandByRepresent.ContainsKey(firstWordOfReceivedMessage))
             {
-                chatIdPickedToEditDay.Remove(chatId);
+                selectedToEditDayByChatId.Remove(chatId);
 
-                var receivedCommandType = representCommandTypes[firstWordOfReceivedMessage];
+                var receivedCommandType = BotCommandByRepresent[firstWordOfReceivedMessage];
 
                 switch (receivedCommandType)
                 {
-                    case BotCommandType.Today:
+                    case BotCommand.Today:
                         var today = message.Date.DayOfWeek;
                         await botClient.SendTextMessageAsync(chatId, today == DayOfWeek.Sunday
                                                                  ? BotReplica.OnTodayRequestInSunday
                                                                  : schedule.GetDaySchedule((WorkDay)today));
-                        chatIdPreviousCommand.Remove(chatId);
+
+                        previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommandType.Full:
+                    case BotCommand.Full:
                         await botClient.SendTextMessageAsync(chatId, schedule.GetFullSchedule());
-                        chatIdPreviousCommand.Remove(chatId);
+                        previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommandType.CustomDay:
-                        chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
+                    case BotCommand.CustomDay:
+                        keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
                             chatId, BotReplica.OnCustomDayCommand,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
-                        chatIdPreviousCommand[chatId] = receivedCommandType;
+                        previousCommandByChatId[chatId] = receivedCommandType;
                         break;
-                    case BotCommandType.EditSchedule:
+                    case BotCommand.EditSchedule:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnEditScheduleRequest);
-                        chatIdPreviousCommand[chatId] = receivedCommandType;
+                        previousCommandByChatId[chatId] = receivedCommandType;
                         break;
-                    case BotCommandType.ClearDaySchedule:
+                    case BotCommand.ClearDaySchedule:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnEditScheduleRequest);
-                        chatIdPreviousCommand[chatId] = receivedCommandType;
+                        previousCommandByChatId[chatId] = receivedCommandType;
                         break;
-                    case BotCommandType.GetAccess:
+                    case BotCommand.GetAccess:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
-                        chatIdPreviousCommand[chatId] = receivedCommandType;
+                        previousCommandByChatId[chatId] = receivedCommandType;
                         break;
-                    case BotCommandType.RecallAccess:
+                    case BotCommand.RecallAccess:
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnAdministrationRequest);
-                        chatIdPreviousCommand[chatId] = receivedCommandType;
+                        previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                 }
             }
-            else if (chatIdPreviousCommand.ContainsKey(chatId) &&
-                     chatIdPreviousCommand[chatId] != BotCommandType.CustomDay)
-                switch (chatIdPreviousCommand[chatId])
+            else if (previousCommandByChatId.ContainsKey(chatId) &&
+                     previousCommandByChatId[chatId] != BotCommand.CustomDay)
+                switch (previousCommandByChatId[chatId])
                 {
-                    case BotCommandType.EditSchedule when accessTokensCache.IsValidToken(message.Text):
-                        chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
+                    case BotCommand.EditSchedule when accessTokensCache.IsValidToken(message.Text):
+                        keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
                             chatId, BotReplica.OnCorrectEditTokenToEdit,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
-                    case BotCommandType.ClearDaySchedule when accessTokensCache.IsValidToken(message.Text):
-                        chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
+                    case BotCommand.ClearDaySchedule when accessTokensCache.IsValidToken(message.Text):
+                        keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
                             chatId, BotReplica.OnCorrectEditTokenToClearDay,
                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
-                    case BotCommandType.GetAccess when accessTokensCache.IsApiAccessToken(message.Text):
-                        var newAccessToken = GenerateAccessToken();
+                    case BotCommand.GetAccess when accessTokensCache.IsApiAccessToken(message.Text):
+                        var newAccessToken = AccessTokensCache.GenerateAccessToken();
                         await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotReplica.OnCorrectApiTokenToGetEditToken, newAccessToken));
                         accessTokensCache.Add(newAccessToken);
-                        chatIdPreviousCommand.Remove(chatId);
+                        previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommandType.RecallAccess when accessTokensCache.IsApiAccessToken(message.Text):
+                    case BotCommand.RecallAccess when accessTokensCache.IsApiAccessToken(message.Text):
                         if (accessTokensCache.Count == 0)
                         {
                             await botClient.SendTextMessageAsync(
                                 chatId, BotReplica.OnCorrectApiTokenToRemoveEditTokenIfNoTokens);
-                            chatIdPreviousCommand.Remove(chatId);
+                            previousCommandByChatId.Remove(chatId);
                         }
                         else
-                            chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
+                            keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
                                 chatId, BotReplica.OnCorrectApiTokenToRemoveEditToken,
                                 replyMarkup: accessTokensCache.GetInlineAccessTokensKeyboard())).MessageId;
 
@@ -160,61 +179,60 @@ namespace ScheduleTelegramBot
                         await botClient.SendTextMessageAsync(chatId, BotReplica.OnIncorrectEditToken);
                         break;
                 }
-            else if (chatIdPickedToEditDay.ContainsKey(chatId))
+            else if (selectedToEditDayByChatId.ContainsKey(chatId))
             {
-                if (schedule.TrySetDaySchedule(chatIdPickedToEditDay[chatId], message.Text))
+                if (schedule.TrySetDaySchedule(selectedToEditDayByChatId[chatId], message.Text))
                 {
-                    chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
-                        chatId,
-                        string.Format(BotReplica.OnSuccessfullyDayScheduleEdit,
-                                      chatIdPickedToEditDay[chatId].GetAttribute<ChatRepresentation>().Representation),
+                    keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
+                        chatId, string.Format(BotReplica.OnSuccessfullyDayScheduleEdit,
+                                              RepresentByWorkDay[selectedToEditDayByChatId[chatId]]),
                         replyMarkup: inlineWorkDaysKeyboard)).MessageId;
 
-                    chatIdPreviousCommand[chatId] = BotCommandType.EditSchedule;
-                    chatIdPickedToEditDay.Remove(chatId);
+                    previousCommandByChatId[chatId] = BotCommand.EditSchedule;
+                    selectedToEditDayByChatId.Remove(chatId);
                 }
                 else
                     await botClient.SendTextMessageAsync(chatId, BotReplica.OnUnsuccessfullyDayScheduleEdit);
             }
             else
             {
-                chatIdPreviousCommand.Remove(chatId);
+                previousCommandByChatId.Remove(chatId);
                 await botClient.SendTextMessageAsync(chatId, BotReplica.HelpMessage);
             }
         }
 
-        private async void BotOnCallbackQuery(object sender, CallbackQueryEventArgs callbackQueryEventArgs)
+        private async void BotOnCallbackQueryAsync(object sender, CallbackQueryEventArgs callbackQueryEventArgs)
         {
             var callbackQuery = callbackQueryEventArgs.CallbackQuery;
             var chatId = callbackQuery.Message.Chat.Id;
 
-            switch (chatIdPreviousCommand[chatId])
+            switch (previousCommandByChatId[chatId])
             {
-                case BotCommandType.EditSchedule:
-                    await botClient.DeleteMessageAsync(chatId, chatIdKeyboardMessageId[chatId]);
-                    chatIdKeyboardMessageId.Remove(chatId);
+                case BotCommand.EditSchedule:
+                    await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
+                    keyboardMessageIdByChatId.Remove(chatId);
 
                     await botClient.SendTextMessageAsync(
                         chatId, string.Format(BotReplica.OnInlinePickDayToEdit, callbackQuery.Data));
-                    chatIdPickedToEditDay[callbackQuery.Message.Chat.Id] = representWorkDays[callbackQuery.Data];
-                    chatIdPreviousCommand.Remove(chatId);
+                    selectedToEditDayByChatId[callbackQuery.Message.Chat.Id] = workDayByRepresent[callbackQuery.Data];
+                    previousCommandByChatId.Remove(chatId);
                     break;
-                case BotCommandType.ClearDaySchedule:
-                    await botClient.DeleteMessageAsync(chatId, chatIdKeyboardMessageId[chatId]);
-                    chatIdKeyboardMessageId.Remove(chatId);
+                case BotCommand.ClearDaySchedule:
+                    await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
+                    keyboardMessageIdByChatId.Remove(chatId);
 
-                    schedule.ClearDaySchedule(representWorkDays[callbackQuery.Data]);
+                    schedule.ClearDaySchedule(workDayByRepresent[callbackQuery.Data]);
 
                     await botClient.SendTextMessageAsync(
                         chatId, string.Format(BotReplica.OnInlinePickDayToClear, callbackQuery.Data));
-                    chatIdPreviousCommand.Remove(chatId);
+                    previousCommandByChatId.Remove(chatId);
                     break;
-                case BotCommandType.CustomDay:
+                case BotCommand.CustomDay:
                     await botClient.SendTextMessageAsync(
-                        chatId, schedule.GetDaySchedule(representWorkDays[callbackQuery.Data]));
+                        chatId, schedule.GetDaySchedule(workDayByRepresent[callbackQuery.Data]));
                     break;
-                case BotCommandType.RecallAccess:
-                    await botClient.DeleteMessageAsync(chatId, chatIdKeyboardMessageId[chatId]);
+                case BotCommand.RecallAccess:
+                    await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
 
                     accessTokensCache.Remove(callbackQuery.Data);
 
@@ -223,11 +241,11 @@ namespace ScheduleTelegramBot
                         await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotReplica.OnRecallLastEditToken, callbackQuery.Data));
 
-                        chatIdKeyboardMessageId.Remove(chatId);
-                        chatIdPreviousCommand.Remove(chatId);
+                        keyboardMessageIdByChatId.Remove(chatId);
+                        previousCommandByChatId.Remove(chatId);
                     }
                     else
-                        chatIdKeyboardMessageId[chatId] = (await botClient.SendTextMessageAsync(
+                        keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotReplica.OnRecallNotLastEditToken, callbackQuery.Data),
                             replyMarkup: accessTokensCache
                                 .GetInlineAccessTokensKeyboard())).MessageId;
@@ -236,21 +254,9 @@ namespace ScheduleTelegramBot
             }
         }
 
-        private static void BotOnReceiveError(object sender, ReceiveErrorEventArgs receiveErrorEventArgs) =>
-            Console.WriteLine("Received error: {0} — {1}",
-                              receiveErrorEventArgs.ApiRequestException.ErrorCode,
-                              receiveErrorEventArgs.ApiRequestException.Message);
-
-        [SuppressMessage("ReSharper", "StringLiteralTypo")]
-        private static string GenerateAccessToken(int length = 32)
-        {
-            const string symbolsPool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%&";
-
-            var resultPassword = new StringBuilder();
-            Random random = new Random();
-            while (0 < length--) resultPassword.Append(symbolsPool[random.Next(symbolsPool.Length)]);
-
-            return resultPassword.ToString();
-        }
+        private static async void BotOnReceiveErrorAsync(object sender, ReceiveErrorEventArgs receiveErrorEventArgs) =>
+            await Task.Run(() => Console.WriteLine("Received error: {0} — {1}",
+                                                   receiveErrorEventArgs.ApiRequestException.ErrorCode,
+                                                   receiveErrorEventArgs.ApiRequestException.Message));
     }
 }
