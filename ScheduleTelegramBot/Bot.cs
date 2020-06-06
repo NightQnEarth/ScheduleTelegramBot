@@ -18,7 +18,7 @@ namespace ScheduleTelegramBot
         public static readonly Dictionary<WorkDay, string> RepresentByWorkDay;
         private static readonly Dictionary<string, WorkDay> workDayByRepresent;
         private static readonly InlineKeyboardMarkup inlineWorkDaysKeyboard;
-        private readonly AccessTokensCache accessTokensCache;
+        private readonly IAccessTokensStorage accessTokensStorage;
         private readonly TelegramBotClient botClient;
         private readonly Schedule schedule;
         private readonly Dictionary<long, BotCommand> previousCommandByChatId;
@@ -29,7 +29,7 @@ namespace ScheduleTelegramBot
         {
             BotCommandByRepresent = typeof(BotCommand).GetEnumValues().Cast<BotCommand>().ToDictionary(
                 command => command
-                           .GetAttribute<ChatRepresentation>().ToString(),
+                    .GetAttribute<ChatRepresentation>().ToString(),
                 command => command);
             workDayByRepresent = typeof(WorkDay).GetEnumValues().Cast<WorkDay>().ToDictionary(
                 day => day.GetAttribute<ChatRepresentation>().ToString(),
@@ -41,10 +41,10 @@ namespace ScheduleTelegramBot
             }));
         }
 
-        public Bot(AccessTokensCache accessTokensCache)
+        public Bot(IAccessTokensStorage accessTokensStorage)
         {
-            this.accessTokensCache = accessTokensCache;
-            botClient = new TelegramBotClient(accessTokensCache.ApiAccessToken);
+            this.accessTokensStorage = accessTokensStorage;
+            botClient = new TelegramBotClient(accessTokensStorage.ApiAccessToken);
             schedule = new Schedule();
             previousCommandByChatId = new Dictionary<long, BotCommand>();
             selectedToEditDayByChatId = new Dictionary<long, WorkDay>();
@@ -108,8 +108,9 @@ namespace ScheduleTelegramBot
                     case BotCommand.Today:
                         var today = message.Date.DayOfWeek;
                         await botClient.SendTextMessageAsync(chatId, today == DayOfWeek.Sunday
-                                                                 ? BotPhrases.OnTodayRequestInSunday
-                                                                 : schedule.GetDaySchedule((WorkDay)(today - 1)));
+                                                                         ? BotPhrases.OnTodayRequestInSunday
+                                                                         : schedule.GetDaySchedule(
+                                                                             (WorkDay)(today - 1)));
 
                         previousCommandByChatId.Remove(chatId);
                         break;
@@ -119,8 +120,8 @@ namespace ScheduleTelegramBot
                         break;
                     case BotCommand.SpecificDay:
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotPhrases.OnSpecificDayCommand,
-                            replyMarkup: inlineWorkDaysKeyboard)).MessageId;
+                                                                 chatId, BotPhrases.OnSpecificDayCommand,
+                                                                 replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         previousCommandByChatId[chatId] = receivedCommandType;
                         break;
                     case BotCommand.EditSchedule:
@@ -145,25 +146,25 @@ namespace ScheduleTelegramBot
                      previousCommandByChatId[chatId] != BotCommand.SpecificDay)
                 switch (previousCommandByChatId[chatId])
                 {
-                    case BotCommand.EditSchedule when accessTokensCache.IsValidToken(message.Text):
+                    case BotCommand.EditSchedule when accessTokensStorage.IsValidToken(message.Text):
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotPhrases.OnCorrectEditTokenToEdit,
-                            replyMarkup: inlineWorkDaysKeyboard)).MessageId;
+                                                                 chatId, BotPhrases.OnCorrectEditTokenToEdit,
+                                                                 replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
-                    case BotCommand.ClearDaySchedule when accessTokensCache.IsValidToken(message.Text):
+                    case BotCommand.ClearDaySchedule when accessTokensStorage.IsValidToken(message.Text):
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, BotPhrases.OnCorrectEditTokenToClearDay,
-                            replyMarkup: inlineWorkDaysKeyboard)).MessageId;
+                                                                 chatId, BotPhrases.OnCorrectEditTokenToClearDay,
+                                                                 replyMarkup: inlineWorkDaysKeyboard)).MessageId;
                         break;
-                    case BotCommand.GetAccess when accessTokensCache.IsApiAccessToken(message.Text):
-                        var newAccessToken = AccessTokensCache.GenerateAccessToken();
+                    case BotCommand.GetAccess when accessTokensStorage.ApiAccessToken == message.Text:
+                        var newAccessToken = AccessTokensHelper.GenerateAccessToken();
                         await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotPhrases.OnCorrectApiTokenToGetEditToken, newAccessToken));
-                        accessTokensCache.Add(newAccessToken);
+                        accessTokensStorage.StoreAccessToken(newAccessToken);
                         previousCommandByChatId.Remove(chatId);
                         break;
-                    case BotCommand.RevokeAccess when accessTokensCache.IsApiAccessToken(message.Text):
-                        if (accessTokensCache.Count == 0)
+                    case BotCommand.RevokeAccess when accessTokensStorage.ApiAccessToken == message.Text:
+                        if (accessTokensStorage.IsEmpty)
                         {
                             await botClient.SendTextMessageAsync(
                                 chatId, BotPhrases.OnCorrectApiTokenToRemoveEditTokenIfNoTokens);
@@ -171,8 +172,12 @@ namespace ScheduleTelegramBot
                         }
                         else
                             keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                                chatId, BotPhrases.OnCorrectApiTokenToRemoveEditToken,
-                                replyMarkup: accessTokensCache.GetInlineAccessTokensKeyboard())).MessageId;
+                                                                     chatId,
+                                                                     BotPhrases.OnCorrectApiTokenToRemoveEditToken,
+                                                                     replyMarkup: AccessTokensHelper
+                                                                         .GetInlineAccessTokensKeyboard(
+                                                                             accessTokensStorage)))
+                                .MessageId;
 
                         break;
                     default:
@@ -184,9 +189,10 @@ namespace ScheduleTelegramBot
                 if (schedule.TrySetDaySchedule(selectedToEditDayByChatId[chatId], message.Text))
                 {
                     keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                        chatId, string.Format(BotPhrases.OnSuccessfullyDayScheduleEdit,
-                                              RepresentByWorkDay[selectedToEditDayByChatId[chatId]]),
-                        replyMarkup: inlineWorkDaysKeyboard)).MessageId;
+                                                             chatId, string.Format(
+                                                                 BotPhrases.OnSuccessfullyDayScheduleEdit,
+                                                                 RepresentByWorkDay[selectedToEditDayByChatId[chatId]]),
+                                                             replyMarkup: inlineWorkDaysKeyboard)).MessageId;
 
                     previousCommandByChatId[chatId] = BotCommand.EditSchedule;
                     selectedToEditDayByChatId.Remove(chatId);
@@ -234,9 +240,9 @@ namespace ScheduleTelegramBot
                 case BotCommand.RevokeAccess:
                     await botClient.DeleteMessageAsync(chatId, keyboardMessageIdByChatId[chatId]);
 
-                    accessTokensCache.Remove(callbackQuery.Data);
+                    accessTokensStorage.DeleteAccessToken(callbackQuery.Data);
 
-                    if (accessTokensCache.Count == 0)
+                    if (accessTokensStorage.IsEmpty)
                     {
                         await botClient.SendTextMessageAsync(
                             chatId, string.Format(BotPhrases.OnRevokeLastEditToken, callbackQuery.Data));
@@ -246,9 +252,14 @@ namespace ScheduleTelegramBot
                     }
                     else
                         keyboardMessageIdByChatId[chatId] = (await botClient.SendTextMessageAsync(
-                            chatId, string.Format(BotPhrases.OnRevokeNotLastEditToken, callbackQuery.Data),
-                            replyMarkup: accessTokensCache
-                                .GetInlineAccessTokensKeyboard())).MessageId;
+                                                                 chatId,
+                                                                 string.Format(
+                                                                     BotPhrases.OnRevokeNotLastEditToken,
+                                                                     callbackQuery.Data),
+                                                                 replyMarkup: AccessTokensHelper
+                                                                     .GetInlineAccessTokensKeyboard(
+                                                                         accessTokensStorage)))
+                            .MessageId;
 
                     break;
             }
