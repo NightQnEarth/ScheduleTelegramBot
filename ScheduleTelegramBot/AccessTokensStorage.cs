@@ -14,9 +14,9 @@ namespace ScheduleTelegramBot
         public string ApiAccessToken { get; }
         public bool IsEmpty => GetAccessTokens(1).FirstOrDefault() is null;
 
-        public AccessTokensStorage(string dataBaseName, string apiAccessToken)
+        public AccessTokensStorage(string databaseConnectionStringName, string apiAccessToken)
         {
-            connectionString = ConfigurationManager.ConnectionStrings[dataBaseName].ConnectionString;
+            connectionString = ConfigurationManager.ConnectionStrings[databaseConnectionStringName].ConnectionString;
             ApiAccessToken = apiAccessToken;
 
             CreateTable(AccessTokensHelper.TokenLength);
