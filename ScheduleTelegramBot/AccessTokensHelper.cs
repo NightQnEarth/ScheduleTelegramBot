@@ -7,8 +7,8 @@ namespace ScheduleTelegramBot
 {
     public static class AccessTokensHelper
     {
+        public const int TokenLength = 32;
         private const string TokenSymbolsPool = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%&";
-        private const int TokenLength = 32;
 
         public static string GenerateAccessToken(int tokenLength = TokenLength)
         {
