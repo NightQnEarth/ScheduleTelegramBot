@@ -72,10 +72,11 @@ namespace ScheduleTelegramBot
         {
             using IDbConnection connection = new NpgsqlConnection(connectionString);
 
-            const string selectTokenQuery = @"SELECT EXISTS(
-                                                               SELECT access_token FROM access_tokens
-                                                                   WHERE access_token = @AccessToken
-                                                           ) AS E;";
+            const string selectTokenQuery = @"SELECT EXISTS
+                                              (
+                                                  SELECT access_token FROM access_tokens
+                                                      WHERE access_token = @AccessToken
+                                              ) AS E;";
 
             return connection.QuerySingle<bool>(selectTokenQuery, new { AccessToken = accessToken });
         }
