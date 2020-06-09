@@ -1,9 +1,22 @@
+# https://docs.docker.com/engine/examples/dotnetcore/
+
 FROM mcr.microsoft.com/dotnet/core/sdk:2.2 AS build-env
 WORKDIR /app
 
-COPY . ./
+# Copy csproj and restore as distinct layers
+COPY *.csproj ./
+RUN dotnet restore
 
-FROM mcr.microsoft.com/dotnet/core/runtime:2.2 AS runtime
+# Copy everything else and build
+COPY . ./
+RUN dotnet publish -c Release -o publish
+
+# Build runtime image
+FROM mcr.microsoft.com/dotnet/core/runtime:2.2
 WORKDIR /app
-COPY --from=build-env /app ./
+COPY --from=build-env /app/publish .
+COPY --from=build-env /app/App.config .
+
+EXPOSE 8080/tcp
+
 CMD NETCORE_URLS=http://*:$PORT dotnet ScheduleTelegramBot.dll

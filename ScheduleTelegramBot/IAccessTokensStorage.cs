@@ -4,11 +4,11 @@ namespace ScheduleTelegramBot
 {
     public interface IAccessTokensStorage
     {
-        public string ApiAccessToken { get; }
-        public bool IsEmpty { get; }
-        public bool IsValidToken(string accessToken);
-        public void StoreAccessToken(string accessToken);
-        public void DeleteAccessToken(string accessToken);
-        public IEnumerable<string> GetAccessTokens(int count = -1);
+        string ApiAccessToken { get; }
+        bool IsEmpty { get; }
+        bool IsValidToken(string accessToken);
+        void StoreAccessToken(string accessToken);
+        void DeleteAccessToken(string accessToken);
+        IEnumerable<string> GetAccessTokens(int count = -1);
     }
 }
