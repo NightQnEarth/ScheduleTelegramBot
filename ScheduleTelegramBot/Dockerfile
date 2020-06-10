@@ -17,4 +17,4 @@ WORKDIR /app
 COPY --from=build-env /app/publish .
 COPY --from=build-env /app/ApiAccessToken .
 
-CMD NETCORE_URLS=http://*:$PORT dotnet ScheduleTelegramBot.dll
+CMD dotnet ScheduleTelegramBot.dll
