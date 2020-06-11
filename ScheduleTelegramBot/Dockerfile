@@ -17,6 +17,4 @@ WORKDIR /app
 COPY --from=build-env /app/publish .
 COPY --from=build-env /app/App.config .
 
-EXPOSE 8080/tcp
-
-CMD NETCORE_URLS=http://*:$PORT dotnet ScheduleTelegramBot.dll
+CMD dotnet ScheduleTelegramBot.dll

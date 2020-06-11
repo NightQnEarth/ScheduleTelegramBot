@@ -11,7 +11,7 @@ services:
   schedule_telegram_bot:
     build: ScheduleTelegramBot/
     ports:
-      - "8080:80"
+      - "443:443"
     restart: always
     environment:
       - TZ=Asia/Yekaterinburg
