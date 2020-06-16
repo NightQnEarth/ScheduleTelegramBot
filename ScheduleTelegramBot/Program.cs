@@ -1,20 +1,20 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Configuration;
 using System.Threading;
 
 namespace ScheduleTelegramBot
 {
     public static class Program
     {
-        private const string TokenStorageName = "ApiAccessToken";
-        private const string TokensCacheFilename = "AccessTokensCache";
+        private const string AppConfigTokenKey = "ApiAccessToken";
+        private const string AppConfigDatabaseKey = "DatabaseConnectionString";
 
         public static void Main()
         {
-            var apiAccessToken = File.ReadAllText(TokenStorageName, Encoding.UTF8);
-            var accessTokensCache = new AccessTokensCache(apiAccessToken, TokensCacheFilename);
+            var apiAccessToken = ConfigurationManager.AppSettings[AppConfigTokenKey];
+            var databaseConnectionStringName = ConfigurationManager.AppSettings[AppConfigDatabaseKey];
+            var accessTokensStorage = new AccessTokensStorage(databaseConnectionStringName, apiAccessToken);
 
-            new Bot(accessTokensCache).StartReceiving(Timeout.InfiniteTimeSpan);
+            new Bot(accessTokensStorage).StartReceiving(Timeout.InfiniteTimeSpan);
         }
     }
 }

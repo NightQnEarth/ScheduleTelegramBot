@@ -15,6 +15,6 @@ RUN dotnet publish -c Release -o publish
 FROM mcr.microsoft.com/dotnet/core/runtime:2.2
 WORKDIR /app
 COPY --from=build-env /app/publish .
-COPY --from=build-env /app/ApiAccessToken .
+COPY --from=build-env /app/App.config .
 
 CMD dotnet ScheduleTelegramBot.dll
